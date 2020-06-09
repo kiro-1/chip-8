@@ -17,66 +17,68 @@ def zeros():
         if op[3] == "0": return "CLS"
         elif op[3] == "e": return "RET"
 
-    elif "0000" in op:return "SYS"
-    else: return "LOAD"+" "+op[1:4]
+    elif "0000" in op:return "SYS "+op[1:4]
+    else: return "COMMAND NOT RECOGNISED"
 
-def jump():return "JUMP "+op[1:4]
+def jump():return "JP "+op[1:4]
 
 def subroutine(): return "CALL "+op[1:4]
 
-def three_skip(): return "SKIPIF V"+op[1]+" == "+op[2:4]#first is the register
+def three_skip(): return "SE "+op[1]+" == "+op[2:4]
 
-def four_skip(): return "SKIPIF V"+op[1]+" != "+op[2:4]
+def four_skip(): return "SNE "+op[1]+" != "+op[2:4]
 
-def five_skip(): return "SKIPIF V"+op[1]+" == V"+op[2]#	Skips the next instruction if VX equals VY.
+def five_skip(): return "SE "+op[1]+" == "+op[2]
 
-def set(): return "SET V"+op[1]+" "+op[2:4]
+def set(): return "LD "+op[1]+" "+op[2:4]
 
-def add(): return "V"+op[1]+" += "+op[2:4]
+def add(): return "ADD "+op[1]+" += "+op[2:4]
 
 def eight_values():
-    if op[3] == "0":return "V"+op[1]+" = V"+op[2]
-    elif op[3] == "1":return "V"+op[1]+"= V"+op[1]+" | "+op[2]
-    elif op[3] == "2":return "V"+op[1]+"= V"+op[1]+" & "+op[2]
-    elif op[3] == "3":return "V"+op[1]+"= V"+op[1]+" XOR "+op[2]
-    elif op[3] == "4":return "V"+op[1]+" += V"+op[2]#Adds VY to VX. VF is set to 1 when there's a carry, and to 0 when there isn't.
-    elif op[3] == "5":return "V"+op[1]+" -= V"+op[2]
-    elif op[3] == "6":return "V"+op[1]+" >>= 1"#Stores the least significant bit of VX in VF and then shifts VX to the right by 1
-    elif op[3] == "7":return "V"+op[1]+" = V"+op[2]+" - "+op[1]
-    elif op[3] == "e":return "V"+op[1]+" <<= 1"
-    else: return "COMMAND NOT RECOGNISED"
+    f = {"0":"LD "+op[1]+" = "+op[2],
+    "1":op[1]+" = "+op[1]+" OR "+op[2],
+    "2":op[1]+" = "+op[1]+" AND "+op[2],
+    "3":op[1]+" = "+op[1]+" XOR "+op[2],
+    "4":"ADD "+op[1]+" "+op[2],
+    "5":"SUB "+op[1]+" "+op[2],
+    "6":"SHR "+op[1]+"{, "+op[2]+"}",
+    "7":"SUBN "+op[1]+" "+op[2],
+    "e":"SHL "+op[1]+"{, "+op[2]+"}"}
+    try: return f[op[3]]
+    except: return "COMMAND NOT RECOGNISED"
 
-def nine_jump():return "SKIPIF V"+op[1]+" != V"+op[2]
+def nine_jump():return "SNE"+op[1]+" "+op[2]
 
-def set_addr(): return "IMEM = "+op[1:4]
+def set_addr(): return "LD I "+op[1:4]
 
-def jump_plus(): return "JUMP "+op[1:4]+" +V0"
+def jump_plus(): return "JP "+"V0 "+op[1:4]
 
-def rand(): return "V"+op[1]+" = RAND & "+op[2:4]
+def rand(): return "RND "+op[1]+" "+op[2:4]
 
-def draw():return "DRAW X"+op[1]+" Y"+op[2]+" H"+op[3]#Draws a sprite at coordinate (VX, VY) that has a width of 8 pixels and a height of N pixels. Each row of 8 pixels is read as bit-coded starting from memory location I; I value doesn’t change after the execution of this instruction. As described above, VF is set to 1 if any screen pixels are flipped from set to unset when the sprite is drawn, and to 0 if that doesn’t happen
+def draw():return "DRW "+op[1]+" "+op[2]+" "+op[3]
 
 def e_skips():
-    if op[2:4] == "9e":return "SKIPIF V"+op[1]+" PRESS"
-    elif op[2:4] == "a1":return "SKIPIF V"+op[1]+"NOT PRESS"
-    else:return "COMMAND NOT RECOGNISED"
+    return "SKP "+op[1] if op[2:4] == "9e" else "SKNP "+op[1] if op[2:4]=="a1" else "COMMAND NOT RECOGNISED"
 
 def f_control():
-    if op[2:4] == "07":return "V"+op[1]+" = DELTIME"
-    elif op[2:4] == "0a":return "HALT V"+op[1]+" = KEY"
-    elif op[2:4] == "15":return "DELTIME = V"+op[1]
-    elif op[2:4] == "18":return "SOUNDTIME = V"+op[1]
-    elif op[2:4] == "1e":return "IMEM += V"+op[1]
-    elif op[2:4] == "29":return "IMEM = V"+op[1]+" CHARLOC"
-    elif op[2:4] == "33":return "IMEM = BCD V"+op[1]
-    elif op[2:4] == "55":return "MEM IMEM = V0-V"+op[1]
-    elif op[2:4] == "65":"V0-V"+op[1]+" MEM IMEM"
-    else:return "COMMAND NOT RECOGNISED"
+    f = {"07":"LD "+op[1]+", DT",
+    "0a":"LD "+op[1]+", K",
+    "15":"LD DT, "+op[1],
+    "18":"LD ST, "+op[1],
+    "1e":"ADD I, "+op[1],
+    "29":"LD F, "+op[1],
+    "33":"LD B, "+op[1],
+    "55":"LD [I], "+op[1],
+    "65":"LD "+op[1]+", [I]",}
+    try: return f[op[2:4]]
+    except:
+        return "COMMAND NOT RECOGNISED"
+
 #---------------------------------------
 for i in range(0,len(program),2):
     opcodes_list.append(order(program[i])+order(program[i+1]))
 
-first_nibble_functions = {# # marks if it will be an intersection
+first_nibble_functions = {# # marks if it will be an intersection, a dictionary emulating a switch case
                         "0":zeros,
                         "1":jump,#
                         "2":subroutine,#
