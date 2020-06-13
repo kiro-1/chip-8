@@ -45,15 +45,27 @@ c.load_program("Breakout (Brix hack) [David Winter, 1997].ch8")#Maze (alt) [Davi
 
 update_display(c)
 
+key = ""
 
 running = True
+test_counter = 0
 while running:
-    print(time.perf_counter())
-    c.clock_cycle()
+
+    c.clock_cycle(key)
+    print(f"cycle: {test_counter} opcode: {hex(c.opcode)} time: {time.perf_counter()}")
+
+    time.sleep(0.001558)
+    test_counter+=1
     if c.draw == True:
         update_display(c)
-    print(time.perf_counter())
+
 
     for event in pygame.event.get():#goes through events
         if event.type == pygame.QUIT:#must be capitals
              running = False
+
+        if event.type == pygame.KEYDOWN:
+            key = chr(event.key)
+
+        if event.type == pygame.KEYUP:
+            key = ""

@@ -29,6 +29,8 @@ class chip:
     #instruction functions
     draw = False
 
+    curr_key = ""
+
     vx = 0
     vy = 0
 
@@ -103,7 +105,6 @@ class chip:
 
 
 
-
     def load_program(self, path):
         b = open(path, "rb").read()
         for i in range(len(b)):
@@ -122,7 +123,8 @@ class chip:
             if x ==32: x=0;print()
 
 
-    def clock_cycle(self):
+    def clock_cycle(self, key):
+        self.curr_key = key
         #self.opcode = self.memory[self.program_counter]
         self.opcode = (self.memory[self.program_counter] << 8) | self.memory[self.program_counter + 1]#makes the opcode, not my design
         #^^ gives us the decimal equivalent of the hex code for the next 2 bytes
@@ -143,6 +145,9 @@ class chip:
             self.function_map[extracted_op]() # call the associated method
         except:
             print ("Unknown initial instruction: %X" % self.opcode)
+            print(self.gpio)
+            print(self.index_register)
+
 
         #timer stuff
         if self.delay_timer > 0:
@@ -261,8 +266,8 @@ class chip:
 
 
     def _8xx7(self):#If Vy > Vx, then VF is set to 1, otherwise 0. Then Vx is subtracted from Vy, and the results stored in Vx.
-        if self.gpio[self.vy] > self.gpio[self.vx]: self.gpio[0xf] = 1
-        else: self.gpio[0xf] = 0
+        if self.gpio[self.vy] > self.gpio[self.vx]: self.gpio[0xf] = 0
+        else: self.gpio[0xf] = 1
         self.gpio[self.vx] = self.gpio[self.vy] - self.gpio[self.vx]
         self.gpio[self.vx] = self.gpio[self.vx] & 0xff
 
@@ -306,8 +311,11 @@ class chip:
 
         row = 0#used for iterating
         while row < height:#loop for each byte ie row
+
             current_row = self.memory[row+self.index_register]#memory location, will increse per byte by 1
+
             pixel_offset = 0#varuable used to calculate bit offset
+
 
             while pixel_offset < 8:
                 loc = x + pixel_offset + ((y + row) * 64)#create
@@ -323,6 +331,7 @@ class chip:
                     self.gpio[0xf] = 1
                 else:
                     self.gpio[0xf] = 0
+
             row+=1
         self.draw = True
 
@@ -339,14 +348,22 @@ class chip:
 
             #keypress stuff nedds porting
     def ex9e(self):
-        if keyboard.is_pressed(self.key_map[self.gpio[self.vx]]):
+        if self.curr_key ==  self.key_map[self.gpio[self.vx]]:
+            print("key detected skipping...")
             self.program_counter += 2
-            print("key pressed")
+
 
     def exa1(self):
-        if not keyboard.is_pressed(self.key_map[self.gpio[self.vx]]):
+        key_list = list(self.key_map.keys())
+        val_list = list(self.key_map.values())
+
+        if self.curr_key == "":
+            pass
+
+
+        elif self.gpio[self.vx] != key_list[val_list.index(self.curr_key)]:#that will be a key for the dict
             self.program_counter += 2
-            print("key not pressed")
+
 
     def fxxx(self):
 
@@ -381,30 +398,51 @@ class chip:
         self.sound_timer = self.gpio[self.vx]
 
     def fx1e(self):
-        n = self.index_register + self.gpio[self.vx]
-        if n > 0xfff:
-            self.index_register = 0xfff
+        # n = self.index_register + self.gpio[self.vx]
+        # if n > 0xfff:
+        #     self.index_register = 0xfff
+        #     self.gpio[0xf] = 1
+        #
+        # else:
+        #     self.index_register = n
+        self.index += self.gpio[self.vx]
+        if self.index > 0xfff:
             self.gpio[0xf] = 1
-
+            self.index &= 0xfff
         else:
-            self.index_register = n
+            self.gpio[0xf] = 0
 
     def fx29(self):#Sets I to the location of the sprite for the character in VX. Characters 0-F (in hexadecimal) are represented by a 4x5 font.
-       self.index_register = (5*(self.gpio[self.vx])) & 0xfff
-       self.draw = True
+
+        self.index_register = (5*(self.gpio[self.vx])) & 0xfff##########################################################################################################################################################################changed to make run not to fix , needs attention
+       #self.index_register = 5*(self.gpio[self.vx])
+
+        self.draw = True
 
 
     def fx33(self):# take the decimal representation of VX, place the hundreds digit in memory at location in I, the tens digit at location I+1, and the ones digit at location I+2.
-        self.memory[self.index]   = self.gpio[self.vx] / 100
-        self.memory[self.index+1] = (self.gpio[self.vx] % 100) / 10
-        self.memory[self.index+2] = self.gpio[self.vx] % 10
-
+        self.memory[self.index_register]   = int(self.gpio[self.vx] / 100)
+        self.memory[self.index_register+1] = int((self.gpio[self.vx] % 100) / 10)
+        self.memory[self.index_register+2] = int(self.gpio[self.vx] % 10)
+        print(self.gpio[self.vx])
+        print(self.gpio[self.vx] / 100,(self.gpio[self.vx] % 100) / 10,self.gpio[self.vx] % 10)
+        print(int(self.gpio[self.vx] / 100),int((self.gpio[self.vx] % 100) / 10),int(self.gpio[self.vx] % 10))
 
     def fx55(self):
-        for j in range(16):
-            self.memory[self.index_register+j] = self.gpio[j]
+        # for j in range(16):
+        #     self.memory[self.index_register+j] = self.gpio[j]
+        i = 0
+        while i <= self.vx:
+            self.memory[self.index_register + i] = self.gpio[i]
+            i += 1
+        self.index_register += (self.vx) + 1
 
 
     def fx65(self):#Fills V0 to VX (including VX) with values from memory starting at address I. The offset from I is increased by 1 for each value written, but I itself is left unmodified.[d]
-        for j in range(16):
-            self.gpio[j] = self.memory[self.index_register+j]
+        # for j in range(16):
+        #     self.gpio[j] = int(self.memory[self.index_register+j])
+        i = 0
+        while i <= self.vx:
+            self.gpio[i] = self.memory[self.index_register + i]
+            i += 1
+        self.index_register += (self.vx) + 1
