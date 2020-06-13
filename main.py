@@ -39,7 +39,7 @@ def update_display(object):
 
 
 c = chip()
-c.load_program("Breakout (Brix hack) [David Winter, 1997].ch8")#Maze (alt) [David Winter, 199x].ch8
+c.load_program("Breakout (Brix hack) [David Winter, 1997] (1).ch8")#Maze (alt) [David Winter, 199x].ch8
 
 
 

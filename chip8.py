@@ -52,6 +52,11 @@ class chip:
        0xF0, 0x80, 0xF0, 0x80, 0x80  # F
        ]
 
+    key_map = {1:"1",2:"2",3:"3",0xc:"4",
+                    4:"q",5:"w",6:"e",0xd:"r",
+                    7:"a",8:"s",9:"d",0xe:"f",
+                    0xa:"z",0:"x",0xb:"c",0xf:"v"}
+
     def __init__(self):
         for i in range(80): self.memory[i] = self.fonts[i]#load in the fonts from 0x0 to 0x50
         self.function_map = {0x0000: self.oxxx,
@@ -98,10 +103,8 @@ class chip:
 
 
 
-        self.key_map = {1:"1",2:"2",3:"3",0xc:"4",
-                        4:"q",5:"w",6:"e",0xd:"r",
-                        7:"a",8:"s",9:"d",0xe:"f",
-                        0xa:"z",0:"x",0xb:"c",0xf:"v"}
+
+        self.reverse_keys = {v:k for k, v in self.key_map.items()}
 
 
 
@@ -141,13 +144,10 @@ class chip:
 
 
 
-        try:
-            self.function_map[extracted_op]() # call the associated method
-        except:
-            print ("Unknown initial instruction: %X" % self.opcode)
-            print(self.gpio)
-            print(self.index_register)
-
+        # try:
+        self.function_map[extracted_op]() # call the associated method
+        # except:
+        #     print ("Unknown initial instruction: %X" % self.opcode)
 
         #timer stuff
         if self.delay_timer > 0:
@@ -341,28 +341,22 @@ class chip:
         extracted_op = self.opcode & 0xf00f
 
 
-        try:
-            self.function_map[extracted_op]() # call the associated method
-        except:
-            print ("Unknown instruction: %X" % self.opcode)
+        # try:
+        self.function_map[extracted_op]() # call the associated method
+        # except:
+        #     print ("Unknown instruction: %X" % self.opcode)
 
             #keypress stuff nedds porting
     def ex9e(self):
         if self.curr_key ==  self.key_map[self.gpio[self.vx]]:
-            print("key detected skipping...")
             self.program_counter += 2
 
 
-    def exa1(self):
-        key_list = list(self.key_map.keys())
-        val_list = list(self.key_map.values())
-
-        if self.curr_key == "":
-            pass
-
-
-        elif self.gpio[self.vx] != key_list[val_list.index(self.curr_key)]:#that will be a key for the dict
+    def exa1(self):#Skips the next instruction if the key stored in VX isn't pressed. (Usually the next instruction is a jump to skip a code block)
+        if self.curr_key == "":self.program_counter += 2
+        elif self.gpio[self.vx] != self.reverse_keys[self.curr_key]:
             self.program_counter += 2
+        #else: pass
 
 
     def fxxx(self):
