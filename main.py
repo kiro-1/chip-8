@@ -2,6 +2,8 @@ import pygame
 import random
 import keyboard
 import time
+from tkinter import Tk
+from tkinter.filedialog import askopenfilename
 
 from chip8 import chip
 #TODO make timer for controled clock, make system for passing keyboard input to class, make a draw flag
@@ -38,8 +40,15 @@ def update_display(object):
 
 
 
+
+
+
+
+Tk().withdraw() # we don't want a full GUI, so keep the root window from appearing
+filename = askopenfilename() # show an "Open" dialog box and return the path to the selected file
+
 c = chip()
-c.load_program("Breakout (Brix hack) [David Winter, 1997] (1).ch8")#Maze (alt) [David Winter, 199x].ch8
+c.load_program(filename)#Maze (alt) [David Winter, 199x].ch8
 
 
 
